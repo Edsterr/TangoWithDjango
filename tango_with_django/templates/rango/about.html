@@ -1,30 +1,21 @@
-<!DOCTYPE html>
+{% extends 'rango/base.html' %}
+	{% load staticfiles %}
+	{% block title_block %}
+		About
+	{% endblock %}
 
-{% load staticfiles %}  <!-- New line -->
-
-<html>
-
-  <head>
-    <title>About</title>
-  </head>
-
-  <body>
-    <h1> Rango says...</h1>
-    <div>
-      ...welcome to the about page <br/>
-      <strong>{{ boldmessage }}</strong><br/>
-    </div>
-    <div>
-      <a href="/rango/">Home</a><br/>
-      <img src="{{ MEDIA_URL }}cat.jpg"
-           alt="Picture of cat" /> <!-- New line -->
-      <img src="/static/images/rango.jpg"
-           alt="Picture of cat" />
-    </div>
-    <div>
-      <br/>
-      This tutorial has been put together by Ethan
-    </div>
-  </body>
-
-</html>
+	{% block body_block %}
+        <div>
+	        <h1 class="page-header">About Page</h1>
+		</div>
+		<img src="{% static "images/rango.jpg" %}" alt="Picture of Rango" />
+		<p>
+		<img src="{{MEDIA_URL}}cat.jpg" alt="Picture of cat">
+		<p>
+		The image of the cat was taken from <a href="http://lizzychrome.deviantart.com/art/Elgin-424012566">	Deviant Art by LizzyChrome</a>.
+	</p>
+  <div>
+    <br/>
+    This tutorial has been put together by Ethan
+  </div>
+{% endblock %}
