@@ -13,150 +13,130 @@ import populate_rango
 import test_utils
 
 #Chapter 6
-#from rango.decorators import chapter6
+from rango.decorators import chapter6
 
-# ===== Chapter 6
-class Chapter6ModelTests(TestCase):
-    def test_category_contains_slug_field(self):
-        #Create a new category
-        new_category = Category(name="Test Category")
-        new_category.save()
+#Chapter 7
+from rango.decorators import chapter7
+from rango.forms import CategoryForm, PageForm
 
-        #Check slug was generated
-        self.assertEquals(new_category.slug, "test-category")
+#Chapter 8
+from django.template import loader
+from django.conf import settings
+from rango.decorators import chapter8
+import os.path
 
-        #Check there is only one category
-        categories = Category.objects.all()
-        self.assertEquals(len(categories), 1)
+# ====== Chapter 8
+class Chapter8ViewTests(TestCase):
 
-        #Check attributes were saved correctly
-        categories[0].slug = new_category.slug
+    def test_base_template_exists(self):
+        # Check base.html exists inside template folder
+        path_to_base = settings.TEMPLATE_DIR + '/rango/base.html'
+        print path_to_base
+        self.assertTrue(os.path.isfile(path_to_base))
 
+    @chapter8
+    def test_titles_displayed(self):
+        # Create user and log in
+        test_utils.create_user()
+        self.client.login(username='testuser', password='test1234')
 
-class Chapter6ViewTests(TestCase):
-    def test_index_context(self):
-        # Access index with empty database
-        response = self.client.get(reverse('index'))
-
-        # Context dictionary is then empty
-        self.assertItemsEqual(response.context['categories'], [])
-        self.assertItemsEqual(response.context['pages'], [])
-
+        # Create categories
         categories = test_utils.create_categories()
-        test_utils.create_pages(categories)
 
-        #Access index with database filled
+        # Access index and check the title displayed
+        response = self.client.get(reverse('index'))
+        self.assertIn('Rango -'.lower(), response.content.lower())
+
+        # Access category page and check the title displayed
+        response = self.client.get(reverse('show_category', args=[categories[0].slug]))
+        self.assertIn(categories[0].name.lower(), response.content.lower())
+
+        # Access about page and check the title displayed
+        response = self.client.get(reverse('about'))
+        self.assertIn('About'.lower(), response.content.lower())
+
+        # Access login page and check the title displayed
+        response = self.client.get(reverse('login'))
+        self.assertIn('Login'.lower(), response.content.lower())
+
+        # Access register page and check the title displayed
+        response = self.client.get(reverse('register'))
+        self.assertIn('Register'.lower(), response.content.lower())
+
+        # Access restricted page and check the title displayed
+        response = self.client.get(reverse('restricted'))
+        self.assertIn("Since you're logged in".lower(), response.content.lower())
+
+        # Access add page and check the title displayed
+        response = self.client.get(reverse('add_page', args=[categories[0].slug]))
+        self.assertIn('Add Page'.lower(), response.content.lower())
+
+        # Access add new category page and check the title displayed
+        response = self.client.get(reverse('add_category'))
+        self.assertIn('Add Category'.lower(), response.content.lower())
+
+    @chapter8
+    def test_pages_using_templates(self):
+        # Create user and log in
+        test_utils.create_user()
+        self.client.login(username='testuser', password='test1234')
+
+        # Create categories
+        categories = test_utils.create_categories()
+        # Create a list of pages to access
+        pages = [reverse('index'), reverse('about'), reverse('add_category'), reverse('register'), reverse('login'),
+                 reverse('show_category', args=[categories[0].slug]), reverse('add_page', args=[categories[0].slug])]#, reverse('restricted')]
+
+        # Create a list of pages to access
+        templates = ['rango/index.html', 'rango/about.html', 'rango/add_category.html', 'rango/register.html',
+                     'rango/login.html','rango/category.html', 'rango/add_page.html']#, 'rango/restricted.html']
+
+        # For each page in the page list, check if it extends from base template
+        for template, page in zip(templates, pages):
+            response = self.client.get(page)
+            self.assertTemplateUsed(response, template)
+
+    @chapter8
+    def test_url_reference_in_index_page_when_logged(self):
+        # Create user and log in
+        test_utils.create_user()
+        self.client.login(username='testuser', password='test1234')
+
+        # Access index page
         response = self.client.get(reverse('index'))
 
-        #Retrieve categories and pages from database
-        categories = Category.objects.order_by('-likes')[:5]
-        pages = Page.objects.order_by('-views')[:5]
+        # Check links that appear for logged person only
+        self.assertIn(reverse('add_category'), response.content)
+        self.assertIn(reverse('restricted'), response.content)
+        self.assertIn(reverse('logout'), response.content)
+        self.assertIn(reverse('about'), response.content)
 
-        # Check context dictionary filled
-        self.assertItemsEqual(response.context['categories'], categories)
-        self.assertItemsEqual(response.context['pages'], pages)
+    @chapter8
+    def test_url_reference_in_index_page_when_not_logged(self):
+        #Access index page with user not logged
+        response = self.client.get(reverse('index'))
 
-    def test_index_displays_five_most_liked_categories(self):
-        #Create categories
+        # Check links that appear for logged person only
+        self.assertIn(reverse('register'), response.content)
+        self.assertIn(reverse('login'), response.content)
+        self.assertIn(reverse('about'), response.content)
+
+    def test_link_to_index_in_base_template(self):
+        # Access index
+        response = self.client.get(reverse('index'))
+
+        # Check for url referencing index
+        self.assertIn(reverse('index'), response.content)
+
+    @chapter8
+    def test_url_reference_in_category_page(self):
+        # Create user and log in
+        test_utils.create_user()
+        self.client.login(username='testuser', password='test1234')
+
+        # Create categories
         test_utils.create_categories()
 
-        # Access index
-        response = self.client.get(reverse('index'))
-
-        # Check if the 5 pages with most likes are displayed
-        for i in xrange(10, 5, -1):
-            self.assertIn("Category " + str(i), response.content)
-
-    def test_index_displays_no_categories_message(self):
-        # Access index with empty database
-        response = self.client.get(reverse('index'))
-
-        # Check if no categories message is displayed
-        self.assertIn("There are no categories present.", response.content)
-
-    def test_index_displays_five_most_viewed_pages(self):
-        #Create categories
-        categories = test_utils.create_categories()
-
-        #Create pages for categories
-        test_utils.create_pages(categories)
-
-        # Access index
-        response = self.client.get(reverse('index'))
-
-        # Check if the 5 pages with most views are displayed
-        for i in xrange(20, 15, -1):
-            self.assertIn("Page " + str(i), response.content)
-
-    def test_index_contains_link_to_categories(self):
-        #Create categories
-        categories = test_utils.create_categories()
-
-        # Access index
-        response = self.client.get(reverse('index'))
-
-        # Check if the 5 pages with most likes are displayed
-        for i in xrange(10, 5, -1):
-            category = categories[i - 1]
-            self.assertIn(reverse('show_category', args=[category.slug])[:-1], response.content)
-
-    def test_category_context(self):
-        #Create categories and pages for categories
-        categories = test_utils.create_categories()
-        pages = test_utils.create_pages(categories)
-
-        # For each category check the context dictionary passed via render() function
-        for category in categories:
-            response = self.client.get(reverse('show_category', args=[category.slug]))
-            pages = Page.objects.filter(category=category)
-            self.assertItemsEqual(response.context['pages'], pages)
-            self.assertEquals(response.context['category'], category)
-
-    def test_category_page_using_template(self):
-        #Create categories in database
-        test_utils.create_categories()
-
-        # Access category page
+        # Check for add_page in category page
         response = self.client.get(reverse('show_category', args=['category-1']))
-
-        # check was used the right template
-        self.assertTemplateUsed(response, 'rango/category.html')
-
-    #@chapter6
-    def test_category_page_displays_pages(self):
-        #Create categories in database
-        categories = test_utils.create_categories()
-
-        # Create pages for categories
-        test_utils.create_pages(categories)
-
-        # For each category, access its page and check for the pages associated with it
-        for category in categories:
-            # Access category page
-            response = self.client.get(reverse('show_category', args=[category.slug]))
-
-            # Retrieve pages for that category
-            pages = Page.objects.filter(category=category)
-
-            # Check pages are displayed and they have a link
-            for page in pages:
-                self.assertIn(page.title, response.content)
-                self.assertIn(page.url, response.content)
-
-    def test_category_page_displays_empty_message(self):
-        #Create categories in database
-        categories = test_utils.create_categories()
-
-        # For each category, access its page and check there are no pages associated with it
-        for category in categories:
-            # Access category page
-            response = self.client.get(reverse('show_category', args=[category.slug]))
-            self.assertIn("No pages currently in category.".lower(), response.content.lower())
-
-    def test_category_page_displays_category_does_not_exist_message(self):
-        # Try to access categories not saved to database and check the message
-        response = self.client.get(reverse('show_category', args=['Python']))
-        self.assertIn("does not exist!".lower(), response.content.lower())
-
-        response = self.client.get(reverse('show_category', args=['Django']))
-        self.assertIn("does not exist!".lower(), response.content.lower())
+        self.assertIn(reverse('add_page', args=['category-1']), response.content)
